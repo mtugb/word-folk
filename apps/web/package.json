@@ -1,0 +1,19 @@
+{
+  "name": "web",
+  "module": "src/app/index.ts",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "bun --hot src/app/index.ts"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.5"
+  },
+  "dependencies": {
+    "core": "workspace:*",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "react-feather": "^2.0.10"
+  }
+}
