@@ -10,9 +10,51 @@ interface StoredEntry extends Entry {
     createdAt: string;
 }
 
+interface ConnectionsResult {
+    hasConnections: boolean;
+    connections: { word: string; relation: string }[];
+}
+
 function headwordFromPath(): string {
     const match = window.location.pathname.match(/^\/word\/(.+)$/);
     return match ? decodeURIComponent(match[1]!) : "";
+}
+
+function Connections({ headword }: { headword: string }) {
+    const [result, setResult] = useState<ConnectionsResult | null>(null);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        api.words({ headword }).connections.get().then(({ data, error }) => {
+            if (error) {
+                setError("関連語の取得に失敗しました");
+                return;
+            }
+            setResult(data);
+        });
+    }, [headword]);
+
+    return (
+        <section className="word-detail__connections">
+            <h2 className="word-detail__connections-title">関連語</h2>
+            {error ? (
+                <div className="word-detail__message">{error}</div>
+            ) : result === null ? (
+                <div className="word-detail__message">生成中...</div>
+            ) : !result.hasConnections || result.connections.length === 0 ? (
+                <div className="word-detail__message">関連語は見つかりませんでした</div>
+            ) : (
+                <ul className="word-detail__connections-list">
+                    {result.connections.map((connection, i) => (
+                        <li key={i} className="word-detail__connection">
+                            <span className="word-detail__connection-word">{connection.word}</span>
+                            <span className="word-detail__connection-relation">{connection.relation}</span>
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </section>
+    );
 }
 
 function WordDetail() {
@@ -55,6 +97,7 @@ function WordDetail() {
                     ))}
                 </ul>
             )}
+            <Connections headword={headword} />
         </div>
     );
 }

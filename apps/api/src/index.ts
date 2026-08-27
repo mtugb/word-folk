@@ -1,18 +1,69 @@
 import { Elysia, t } from "elysia";
 import { cors } from "@elysiajs/cors";
 import { tokenize, tokensToEntry, type Entry } from "core";
+import { generateConnections } from "./connections";
+import { insertEntry, listEntries } from "./db";
 
-interface StoredEntry extends Entry {
-    id: string;
-    createdAt: string;
-}
+const API_TOKEN = process.env.API_TOKEN;
 
-const entries: StoredEntry[] = [];
+const StoredEntrySchema = t.Object({
+    id: t.String(),
+    headword: t.Array(t.String()),
+    hint: t.String(),
+    createdAt: t.String(),
+});
 
 const app = new Elysia()
     .use(cors())
     .get("/", () => "Hello Elysia")
-    .get("/entries", () => entries)
+    .guard({
+        beforeHandle({ headers, set }) {
+            if (!API_TOKEN || headers["x-api-key"] !== API_TOKEN) {
+                set.status = 401;
+                return { error: "unauthorized" };
+            }
+        },
+        response: {
+            401: t.Object({ error: t.String() }),
+        },
+    })
+    .get("/entries", () => listEntries(), {
+        response: {
+            200: t.Array(StoredEntrySchema),
+        },
+    })
+    .get(
+        "/words/:headword/connections",
+        async ({ params, set }) => {
+            const headword = decodeURIComponent(params.headword);
+            const hints = listEntries()
+                .filter(entry => entry.headword.join(" ") === headword)
+                .map(entry => entry.hint)
+                .filter((hint): hint is string => hint.length > 0);
+
+            try {
+                return await generateConnections(headword, hints);
+            } catch (e) {
+                console.error("generateConnections failed:", e);
+                set.status = 502;
+                return { error: "接続語の生成に失敗しました" };
+            }
+        },
+        {
+            response: {
+                200: t.Object({
+                    hasConnections: t.Boolean(),
+                    connections: t.Array(
+                        t.Object({
+                            word: t.String(),
+                            relation: t.String(),
+                        })
+                    ),
+                }),
+                502: t.Object({ error: t.String() }),
+            },
+        }
+    )
     .post(
         "/entries",
         ({ body, set }) => {
@@ -29,12 +80,7 @@ const app = new Elysia()
                 return { error: "見出し語がありません" };
             }
 
-            const stored: StoredEntry = {
-                ...entry,
-                id: crypto.randomUUID(),
-                createdAt: new Date().toISOString(),
-            };
-            entries.push(stored);
+            const stored = insertEntry(entry);
             set.status = 201;
             return stored;
         },
@@ -42,6 +88,10 @@ const app = new Elysia()
             body: t.Object({
                 input: t.String(),
             }),
+            response: {
+                201: StoredEntrySchema,
+                400: t.Object({ error: t.String() }),
+            },
         }
     )
     .listen(3211);

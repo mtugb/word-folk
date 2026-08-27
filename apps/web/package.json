@@ -4,7 +4,8 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "dev": "bun --hot src/app/index.ts"
+    "dev": "bun --hot src/app/index.ts",
+    "start": "bun src/app/index.ts"
   },
   "devDependencies": {
     "@types/react": "^19.2.18",
