@@ -6,12 +6,17 @@
   "private": true,
   "scripts": {
     "dev": "bun --hot src/index.ts",
-    "start": "bun src/index.ts"
+    "start": "bun src/index.ts",
+    "db:generate": "drizzle-kit generate"
   },
   "dependencies": {
     "@elysiajs/cors": "^1.4.2",
     "@google/genai": "^2.19.0",
     "core": "workspace:*",
+    "drizzle-orm": "^0.45.2",
     "elysia": "^1.4.30"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.31.10"
   }
 }

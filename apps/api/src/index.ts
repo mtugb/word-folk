@@ -1,7 +1,7 @@
 import { Elysia, t } from "elysia";
 import { cors } from "@elysiajs/cors";
 import { tokenize, tokensToEntry, type Entry } from "core";
-import { generateConnections } from "./connections";
+import { ensureConnections } from "./connectionsService";
 import { insertEntry, listEntries, getEntry } from "./db";
 
 const API_TOKEN = process.env.API_TOKEN;
@@ -59,7 +59,7 @@ const app = new Elysia()
             }
 
             try {
-                return await generateConnections(entry.headword.join(" "), entry.hint);
+                return await ensureConnections(entry);
             } catch (e) {
                 console.error("generateConnections failed:", e);
                 set.status = 502;
@@ -100,6 +100,9 @@ const app = new Elysia()
             }
 
             const stored = insertEntry(entry);
+            ensureConnections(stored).catch((e) => {
+                console.error("background connections generation failed:", e);
+            });
             set.status = 201;
             return stored;
         },
