@@ -2,7 +2,7 @@ import { Elysia, t } from "elysia";
 import { cors } from "@elysiajs/cors";
 import { tokenize, tokensToEntry, type Entry } from "core";
 import { generateConnections } from "./connections";
-import { insertEntry, listEntries } from "./db";
+import { insertEntry, listEntries, getEntry } from "./db";
 
 const API_TOKEN = process.env.API_TOKEN;
 
@@ -33,16 +33,33 @@ const app = new Elysia()
         },
     })
     .get(
-        "/words/:headword/connections",
+        "/entries/:id",
+        ({ params, set }) => {
+            const entry = getEntry(params.id);
+            if (!entry) {
+                set.status = 404;
+                return { error: "見つかりません" };
+            }
+            return entry;
+        },
+        {
+            response: {
+                200: StoredEntrySchema,
+                404: t.Object({ error: t.String() }),
+            },
+        }
+    )
+    .get(
+        "/entries/:id/connections",
         async ({ params, set }) => {
-            const headword = decodeURIComponent(params.headword);
-            const hints = listEntries()
-                .filter(entry => entry.headword.join(" ") === headword)
-                .map(entry => entry.hint)
-                .filter((hint): hint is string => hint.length > 0);
+            const entry = getEntry(params.id);
+            if (!entry) {
+                set.status = 404;
+                return { error: "見つかりません" };
+            }
 
             try {
-                return await generateConnections(headword, hints);
+                return await generateConnections(entry.headword.join(" "), entry.hint);
             } catch (e) {
                 console.error("generateConnections failed:", e);
                 set.status = 502;
@@ -52,6 +69,7 @@ const app = new Elysia()
         {
             response: {
                 200: t.Object({
+                    meaning: t.String(),
                     hasConnections: t.Boolean(),
                     connections: t.Array(
                         t.Object({
@@ -60,6 +78,7 @@ const app = new Elysia()
                         })
                     ),
                 }),
+                404: t.Object({ error: t.String() }),
                 502: t.Object({ error: t.String() }),
             },
         }

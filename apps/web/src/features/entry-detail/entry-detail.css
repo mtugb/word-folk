@@ -13,67 +13,64 @@ body {
     padding: 3rem 1rem;
 }
 
-.word-detail {
+.entry-detail {
     width: min(90vw, 480px);
 }
 
-.word-detail--message {
+.entry-detail--message {
     color: #666;
     font-size: 0.95rem;
     text-align: center;
     margin-top: 2rem;
 }
 
-.word-detail__header {
+.entry-detail__header {
     display: flex;
     align-items: center;
     gap: 1rem;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
 }
 
-.word-detail__headword {
+.entry-detail__headword {
     font-size: 1.75rem;
     color: #7fb3f5;
     margin: 0;
 }
 
-.word-detail__message {
+.entry-detail__message {
     color: #666;
     font-size: 0.9rem;
 }
 
-.word-detail__hints {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-.word-detail__hint {
+.entry-detail__hint {
     padding: 0.5rem 0.75rem;
     border-radius: 0.5rem;
     background: #16191d;
     color: #8fd191;
 }
 
-.word-detail__hint--empty {
+.entry-detail__hint--empty {
     color: #666;
     font-style: italic;
 }
 
-.word-detail__connections {
+.entry-detail__connections {
     margin-top: 2rem;
 }
 
-.word-detail__connections-title {
+.entry-detail__connections-title {
     font-size: 1rem;
     color: #999;
+    margin: 0 0 0.5rem;
+}
+
+.entry-detail__connections-meaning {
+    font-size: 0.85rem;
+    color: #666;
     margin: 0 0 0.75rem;
 }
 
-.word-detail__connections-list {
+.entry-detail__connections-list {
     list-style: none;
     margin: 0;
     padding: 0;
@@ -82,7 +79,7 @@ body {
     gap: 0.5rem;
 }
 
-.word-detail__connection {
+.entry-detail__connection {
     display: flex;
     align-items: baseline;
     gap: 0.6rem;
@@ -91,12 +88,12 @@ body {
     background: #16191d;
 }
 
-.word-detail__connection-word {
+.entry-detail__connection-word {
     color: #d9b36c;
     font-size: 1.05rem;
 }
 
-.word-detail__connection-relation {
+.entry-detail__connection-relation {
     color: #666;
     font-size: 0.8rem;
 }

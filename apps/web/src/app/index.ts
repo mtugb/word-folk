@@ -1,13 +1,13 @@
 import box from "../features/box/index.html";
 import history from "../features/history/index.html";
-import wordDetail from "../features/word-detail/index.html";
+import entryDetail from "../features/entry-detail/index.html";
 
 const server = Bun.serve({
     port: 3210,
     routes: {
         "/": box,
         "/history": history,
-        "/word/:headword": wordDetail,
+        "/entry/:id": entryDetail,
     },
     development: {
         hmr: true,

@@ -46,7 +46,7 @@ function History() {
                 const headword = entry.headword.join(" ");
                 return (
                     <li key={entry.id}>
-                        <a className="history__row" href={`/word/${encodeURIComponent(headword)}`}>
+                        <a className="history__row" href={`/entry/${entry.id}`}>
                             <FaceIcon headword={headword} size={40} />
                             <span className="history__headword">{headword}</span>
                             {entry.hint && <span className="history__hint">{entry.hint}</span>}

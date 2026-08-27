@@ -50,3 +50,8 @@ export function listEntries(): StoredEntry[] {
     const rows = db.query("SELECT * FROM entries ORDER BY created_at ASC").all() as EntryRow[];
     return rows.map(rowToEntry);
 }
+
+export function getEntry(id: string): StoredEntry | null {
+    const row = db.query("SELECT * FROM entries WHERE id = ?").get(id) as EntryRow | null;
+    return row ? rowToEntry(row) : null;
+}
