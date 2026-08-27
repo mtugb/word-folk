@@ -12,6 +12,7 @@ const entries: StoredEntry[] = [];
 const app = new Elysia()
     .use(cors())
     .get("/", () => "Hello Elysia")
+    .get("/entries", () => entries)
     .post(
         "/entries",
         ({ body, set }) => {
