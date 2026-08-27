@@ -11,6 +11,18 @@ export interface StoredEntry extends Entry {
     createdAt: string;
 }
 
+export interface PersistedConnection {
+    word: string;
+    relation: string;
+    relatedEntryId: string | null;
+}
+
+export interface PersistedConnectionsResult {
+    meaning: string;
+    hasConnections: boolean;
+    connections: PersistedConnection[];
+}
+
 // import.meta.dir-relative, so migrations resolve correctly regardless of
 // the process's cwd (e.g. bun test invoked from the repo root).
 const MIGRATIONS_FOLDER = `${import.meta.dir}/../drizzle`;
@@ -48,7 +60,25 @@ export function createDb(sqlitePath: string) {
         return row ? toStoredEntry(row) : null;
     }
 
-    function getConnections(entryId: string): ConnectionsResult | null {
+    /**
+     * Finds an existing entry whose headword matches the given free-text word
+     * (case-insensitive, exact match on the space-joined headword — the same
+     * form the AI is given and returns). Never matches excludeEntryId itself.
+     * When several entries share the headword (e.g. multiple senses of the
+     * same word), the most recently created one wins.
+     */
+    function findEntryIdByHeadword(word: string, excludeEntryId: string): string | null {
+        const normalized = word.trim().toLowerCase();
+        const rows = db.select({ id: entries.id, headword: entries.headword, createdAt: entries.createdAt }).from(entries).all();
+        const matches = rows.filter(
+            (row) => row.id !== excludeEntryId && row.headword.join(" ").trim().toLowerCase() === normalized
+        );
+        if (matches.length === 0) return null;
+        matches.sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+        return matches[0]!.id;
+    }
+
+    function getConnections(entryId: string): PersistedConnectionsResult | null {
         const entry = db.select().from(entries).where(eq(entries.id, entryId)).get();
         if (!entry || !entry.connectionsGeneratedAt) return null;
 
@@ -56,37 +86,51 @@ export function createDb(sqlitePath: string) {
         return {
             meaning: entry.connectionsMeaning ?? "",
             hasConnections: rows.length > 0,
-            connections: rows.map((row) => ({ word: row.word, relation: row.relation })),
+            connections: rows.map((row) => ({
+                word: row.word,
+                relation: row.relation,
+                relatedEntryId: row.relatedEntryId,
+            })),
         };
     }
 
     /**
-     * Persists a generated connections result. Guarded by connections_generated_at
-     * IS NULL so a slower duplicate generation (background job vs. on-demand
-     * fallback racing each other) doesn't overwrite/double-insert.
+     * Persists a generated connections result, resolving each connection's
+     * word against already-registered entries' headwords. Guarded by
+     * connections_generated_at IS NULL so a slower duplicate generation
+     * (background job vs. on-demand fallback racing each other) doesn't
+     * overwrite/double-insert; returns null when that guard loses the race.
      */
-    function saveConnections(entryId: string, result: ConnectionsResult): boolean {
+    function saveConnections(entryId: string, result: ConnectionsResult): PersistedConnectionsResult | null {
         const updated = db
             .update(entries)
             .set({ connectionsMeaning: result.meaning, connectionsGeneratedAt: new Date().toISOString() })
             .where(and(eq(entries.id, entryId), isNull(entries.connectionsGeneratedAt)))
             .returning({ id: entries.id })
             .all();
-        if (updated.length === 0) return false;
+        if (updated.length === 0) return null;
 
-        if (result.connections.length > 0) {
+        const connections: PersistedConnection[] = result.connections.map((connection) => ({
+            word: connection.word,
+            relation: connection.relation,
+            relatedEntryId: findEntryIdByHeadword(connection.word, entryId),
+        }));
+
+        if (connections.length > 0) {
             db.insert(entryConnections)
                 .values(
-                    result.connections.map((connection) => ({
+                    connections.map((connection) => ({
                         entryId,
                         word: connection.word,
                         relation: connection.relation,
+                        relatedEntryId: connection.relatedEntryId,
                         createdAt: new Date().toISOString(),
                     }))
                 )
                 .run();
         }
-        return true;
+
+        return { meaning: result.meaning, hasConnections: connections.length > 0, connections };
     }
 
     return { insertEntry, listEntries, getEntry, getConnections, saveConnections };

@@ -1,10 +1,17 @@
 import { describe, expect, mock, test } from "bun:test";
 import type { ConnectionsResult } from "./connections";
+import type { PersistedConnectionsResult } from "./db";
 
 const MOCK_RESULT: ConnectionsResult = {
     meaning: "歩くという意味",
     hasConnections: true,
     connections: [{ word: "stroll", relation: "類義語" }],
+};
+
+const MOCK_PERSISTED_RESULT: PersistedConnectionsResult = {
+    meaning: "歩くという意味",
+    hasConnections: true,
+    connections: [{ word: "stroll", relation: "類義語", relatedEntryId: null }],
 };
 
 describe("connectionsService", () => {
@@ -20,9 +27,9 @@ describe("connectionsService", () => {
 
         const result = await ensureConnections(entry);
 
-        expect(result).toEqual(MOCK_RESULT);
+        expect(result).toEqual(MOCK_PERSISTED_RESULT);
         expect(generateConnections).toHaveBeenCalledTimes(1);
-        expect(db.getConnections(entry.id)).toEqual(MOCK_RESULT);
+        expect(db.getConnections(entry.id)).toEqual(MOCK_PERSISTED_RESULT);
     });
 
     test("reads from the DB cache without calling generateConnections again", async () => {
@@ -38,7 +45,7 @@ describe("connectionsService", () => {
         await ensureConnections(entry);
         const second = await ensureConnections(entry);
 
-        expect(second).toEqual(MOCK_RESULT);
+        expect(second).toEqual(MOCK_PERSISTED_RESULT);
         expect(generateConnections).toHaveBeenCalledTimes(1);
     });
 
@@ -61,13 +68,13 @@ describe("connectionsService", () => {
         resolveGeneration!(MOCK_RESULT);
         const [result1, result2] = await Promise.all([call1, call2]);
 
-        expect(result1).toEqual(MOCK_RESULT);
-        expect(result2).toEqual(MOCK_RESULT);
+        expect(result1).toEqual(MOCK_PERSISTED_RESULT);
+        expect(result2).toEqual(MOCK_PERSISTED_RESULT);
         expect(generateConnections).toHaveBeenCalledTimes(1);
     });
 
     test("does not persist on failure, so the next call retries", async () => {
-        const generateConnections = mock(async () => {
+        const generateConnections = mock(async (): Promise<ConnectionsResult> => {
             throw new Error("gemini unavailable");
         });
         mock.module("./connections", () => ({ generateConnections }));
@@ -84,7 +91,27 @@ describe("connectionsService", () => {
         generateConnections.mockImplementation(async () => MOCK_RESULT);
         const retried = await ensureConnections(entry);
 
-        expect(retried).toEqual(MOCK_RESULT);
-        expect(db.getConnections(entry.id)).toEqual(MOCK_RESULT);
+        expect(retried).toEqual(MOCK_PERSISTED_RESULT);
+        expect(db.getConnections(entry.id)).toEqual(MOCK_PERSISTED_RESULT);
+    });
+
+    test("links a connection to an existing entry when the generated word matches its headword", async () => {
+        const generateConnections = mock(async () => ({
+            meaning: "経営するという意味",
+            hasConnections: true,
+            connections: [{ word: "walk", relation: "対義語" }],
+        }));
+        mock.module("./connections", () => ({ generateConnections }));
+        const { createConnectionsService } = await import("./connectionsService");
+        const { createDb } = await import("./db");
+
+        const db = createDb(":memory:");
+        const walk = db.insertEntry({ headword: ["walk"], hint: "歩く" });
+        const run = db.insertEntry({ headword: ["run"], hint: "経営" });
+        const { ensureConnections } = createConnectionsService(db);
+
+        const result = await ensureConnections(run);
+
+        expect(result.connections[0]!.relatedEntryId).toBe(walk.id);
     });
 });

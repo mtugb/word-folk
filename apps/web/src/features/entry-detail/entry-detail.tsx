@@ -13,7 +13,7 @@ interface StoredEntry extends Entry {
 interface ConnectionsResult {
     meaning: string;
     hasConnections: boolean;
-    connections: { word: string; relation: string }[];
+    connections: { word: string; relation: string; relatedEntryId: string | null }[];
 }
 
 function idFromPath(): string {
@@ -53,7 +53,16 @@ function Connections({ id }: { id: string }) {
                         <ul className="entry-detail__connections-list">
                             {result.connections.map((connection, i) => (
                                 <li key={i} className="entry-detail__connection">
-                                    <span className="entry-detail__connection-word">{connection.word}</span>
+                                    {connection.relatedEntryId ? (
+                                        <a
+                                            className="entry-detail__connection-word"
+                                            href={`/entry/${connection.relatedEntryId}`}
+                                        >
+                                            {connection.word}
+                                        </a>
+                                    ) : (
+                                        <span className="entry-detail__connection-word">{connection.word}</span>
+                                    )}
                                     <span className="entry-detail__connection-relation">{connection.relation}</span>
                                 </li>
                             ))}

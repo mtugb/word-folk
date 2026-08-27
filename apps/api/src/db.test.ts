@@ -43,24 +43,25 @@ describe("db", () => {
         const db = createDb(":memory:");
         const entry = db.insertEntry({ headword: ["walk"], hint: "歩く" });
 
-        const ok = db.saveConnections(entry.id, {
+        const saved = db.saveConnections(entry.id, {
             meaning: "歩くという意味",
             hasConnections: true,
             connections: [
                 { word: "stroll", relation: "類義語" },
-                { word: "run", relation: "対義語" },
+                { word: "sprint", relation: "対義語" },
             ],
         });
 
-        expect(ok).toBe(true);
-        expect(db.getConnections(entry.id)).toEqual({
+        const expected = {
             meaning: "歩くという意味",
             hasConnections: true,
             connections: [
-                { word: "stroll", relation: "類義語" },
-                { word: "run", relation: "対義語" },
+                { word: "stroll", relation: "類義語", relatedEntryId: null },
+                { word: "sprint", relation: "対義語", relatedEntryId: null },
             ],
-        });
+        };
+        expect(saved).toEqual(expected);
+        expect(db.getConnections(entry.id)).toEqual(expected);
     });
 
     test("saveConnections with no connections still marks the entry as generated", () => {
@@ -87,12 +88,66 @@ describe("db", () => {
             connections: [{ word: "hike", relation: "類義語" }],
         });
 
-        expect(first).toBe(true);
-        expect(second).toBe(false);
+        expect(first).not.toBeNull();
+        expect(second).toBeNull();
         expect(db.getConnections(entry.id)).toEqual({
             meaning: "first",
             hasConnections: true,
-            connections: [{ word: "stroll", relation: "類義語" }],
+            connections: [{ word: "stroll", relation: "類義語", relatedEntryId: null }],
         });
+    });
+
+    test("saveConnections links a connection to an existing entry with a matching headword", () => {
+        const db = createDb(":memory:");
+        const run = db.insertEntry({ headword: ["run"], hint: "経営" });
+        const walk = db.insertEntry({ headword: ["walk"], hint: "歩く" });
+
+        db.saveConnections(walk.id, {
+            meaning: "歩くという意味",
+            hasConnections: true,
+            connections: [
+                { word: "Run", relation: "対義語" }, // AI表記の大文字小文字ゆれもマッチすること
+                { word: "stroll", relation: "類義語" }, // 未登録の語はマッチしない
+            ],
+        });
+
+        expect(db.getConnections(walk.id)).toEqual({
+            meaning: "歩くという意味",
+            hasConnections: true,
+            connections: [
+                { word: "Run", relation: "対義語", relatedEntryId: run.id },
+                { word: "stroll", relation: "類義語", relatedEntryId: null },
+            ],
+        });
+    });
+
+    test("saveConnections never links a connection back to the entry being generated for", () => {
+        const db = createDb(":memory:");
+        const walk = db.insertEntry({ headword: ["walk"], hint: "歩く" });
+
+        db.saveConnections(walk.id, {
+            meaning: "歩くという意味",
+            hasConnections: true,
+            connections: [{ word: "walk", relation: "自分自身" }],
+        });
+
+        expect(db.getConnections(walk.id)!.connections[0]!.relatedEntryId).toBeNull();
+    });
+
+    test("saveConnections picks the most recently created entry when headwords collide", async () => {
+        const db = createDb(":memory:");
+        const older = db.insertEntry({ headword: ["test"], hint: "試験" });
+        await new Promise((resolve) => setTimeout(resolve, 2));
+        const newer = db.insertEntry({ headword: ["test"], hint: "テスト" });
+        const other = db.insertEntry({ headword: ["quiz"], hint: "小テスト" });
+
+        db.saveConnections(other.id, {
+            meaning: "小テストという意味",
+            hasConnections: true,
+            connections: [{ word: "test", relation: "類義語" }],
+        });
+
+        expect(db.getConnections(other.id)!.connections[0]!.relatedEntryId).toBe(newer.id);
+        expect(newer.id).not.toBe(older.id);
     });
 });

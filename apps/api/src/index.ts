@@ -79,6 +79,7 @@ const app = new Elysia()
                         t.Object({
                             word: t.String(),
                             relation: t.String(),
+                            relatedEntryId: t.Nullable(t.String()),
                         })
                     ),
                 }),

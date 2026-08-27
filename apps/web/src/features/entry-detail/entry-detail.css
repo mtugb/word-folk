@@ -91,6 +91,17 @@ body {
 .entry-detail__connection-word {
     color: #d9b36c;
     font-size: 1.05rem;
+    text-decoration: none;
+}
+
+a.entry-detail__connection-word {
+    text-decoration: underline;
+    text-decoration-color: rgba(217, 179, 108, 0.4);
+    text-underline-offset: 0.2em;
+}
+
+a.entry-detail__connection-word:hover {
+    text-decoration-color: #d9b36c;
 }
 
 .entry-detail__connection-relation {
