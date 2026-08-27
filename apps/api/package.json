@@ -1,12 +1,15 @@
 {
   "name": "api",
   "module": "src/index.ts",
+  "types": "src/index.ts",
   "type": "module",
   "private": true,
   "scripts": {
     "dev": "bun --hot src/index.ts"
   },
   "dependencies": {
-    "elysia": "latest"
+    "@elysiajs/cors": "^1.4.2",
+    "core": "workspace:*",
+    "elysia": "^1.4.30"
   }
 }

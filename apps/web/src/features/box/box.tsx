@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { Send } from "react-feather";
 import { tokenize, tokensToEntry, type Entry } from "core";
 import { FaceIcon } from "../../components/FaceIcon";
+import { api } from "../../lib/api";
 import "./box.css";
 
 function TokenPreview({ value }: { value: string }) {
@@ -56,7 +57,13 @@ function Box() {
                     type="button"
                     disabled={!canSubmit}
                     aria-label="送信"
-                    onClick={() => setValue("")}
+                    onClick={() => {
+                        const input = value;
+                        setValue("");
+                        api.entries.post({ input }).then(({ error }) => {
+                            if (error) console.error("Failed to submit entry", error);
+                        });
+                    }}
                 >
                     <Send size={20} />
                 </button>
