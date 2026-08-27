@@ -42,14 +42,19 @@ function History() {
 
     return (
         <ul className="history">
-            {entries.slice().reverse().map(entry => (
-                <li key={entry.id} className="history__row">
-                    <FaceIcon headword={entry.headword.join(" ")} size={40} />
-                    <span className="history__headword">{entry.headword.join(" ")}</span>
-                    {entry.hint && <span className="history__hint">{entry.hint}</span>}
-                    <span className="history__time">{formatTimestamp(entry.createdAt)}</span>
-                </li>
-            ))}
+            {entries.slice().reverse().map(entry => {
+                const headword = entry.headword.join(" ");
+                return (
+                    <li key={entry.id}>
+                        <a className="history__row" href={`/word/${encodeURIComponent(headword)}`}>
+                            <FaceIcon headword={headword} size={40} />
+                            <span className="history__headword">{headword}</span>
+                            {entry.hint && <span className="history__hint">{entry.hint}</span>}
+                            <span className="history__time">{formatTimestamp(entry.createdAt)}</span>
+                        </a>
+                    </li>
+                );
+            })}
         </ul>
     );
 }

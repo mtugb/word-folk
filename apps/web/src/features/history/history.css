@@ -37,6 +37,12 @@ body {
     padding: 0.5rem 0.75rem;
     border-radius: 0.5rem;
     background: #16191d;
+    text-decoration: none;
+    color: inherit;
+}
+
+.history__row:hover {
+    background: #1c2126;
 }
 
 .history__headword {
