@@ -1,10 +1,14 @@
 import { Elysia, t } from "elysia";
 import { cors } from "@elysiajs/cors";
 import { tokenize, tokensToEntry, type Entry } from "core";
-import { ensureConnections } from "./connectionsService";
-import { insertEntry, listEntries, getEntry } from "./db";
+import { createConnectionsService } from "./connectionsService";
+import { createDb } from "./db";
 
 const API_TOKEN = process.env.API_TOKEN;
+
+const db = createDb(process.env.DATABASE_PATH ?? "wordfolk.sqlite");
+const { insertEntry, listEntries, getEntry } = db;
+const { ensureConnections } = createConnectionsService(db);
 
 const StoredEntrySchema = t.Object({
     id: t.String(),
