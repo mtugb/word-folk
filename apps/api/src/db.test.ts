@@ -45,19 +45,21 @@ describe("db", () => {
 
         const saved = db.saveConnections(entry.id, {
             meaning: "歩くという意味",
+            pos: "動",
             hasConnections: true,
             connections: [
-                { word: "stroll", relation: "類義語" },
-                { word: "sprint", relation: "対義語" },
+                { word: "stroll", relation: "類義語", pos: "動", wordnetVerified: true },
+                { word: "sprint", relation: "対義語", pos: "動", wordnetVerified: false },
             ],
         });
 
         const expected = {
             meaning: "歩くという意味",
+            pos: "動",
             hasConnections: true,
             connections: [
-                { word: "stroll", relation: "類義語", relatedEntryId: null },
-                { word: "sprint", relation: "対義語", relatedEntryId: null },
+                { word: "stroll", relation: "類義語", pos: "動", relatedEntryId: null, wordnetVerified: true },
+                { word: "sprint", relation: "対義語", pos: "動", relatedEntryId: null, wordnetVerified: false },
             ],
         };
         expect(saved).toEqual(expected);
@@ -68,9 +70,9 @@ describe("db", () => {
         const db = createDb(":memory:");
         const entry = db.insertEntry({ headword: ["xyz"], hint: "" });
 
-        db.saveConnections(entry.id, { meaning: "", hasConnections: false, connections: [] });
+        db.saveConnections(entry.id, { meaning: "", pos: "", hasConnections: false, connections: [] });
 
-        expect(db.getConnections(entry.id)).toEqual({ meaning: "", hasConnections: false, connections: [] });
+        expect(db.getConnections(entry.id)).toEqual({ meaning: "", pos: "", hasConnections: false, connections: [] });
     });
 
     test("saveConnections is a no-op (and doesn't duplicate rows) once already generated", () => {
@@ -79,21 +81,24 @@ describe("db", () => {
 
         const first = db.saveConnections(entry.id, {
             meaning: "first",
+            pos: "動",
             hasConnections: true,
-            connections: [{ word: "stroll", relation: "類義語" }],
+            connections: [{ word: "stroll", relation: "類義語", pos: "動", wordnetVerified: false }],
         });
         const second = db.saveConnections(entry.id, {
             meaning: "second",
+            pos: "動",
             hasConnections: true,
-            connections: [{ word: "hike", relation: "類義語" }],
+            connections: [{ word: "hike", relation: "類義語", pos: "動", wordnetVerified: false }],
         });
 
         expect(first).not.toBeNull();
         expect(second).toBeNull();
         expect(db.getConnections(entry.id)).toEqual({
             meaning: "first",
+            pos: "動",
             hasConnections: true,
-            connections: [{ word: "stroll", relation: "類義語", relatedEntryId: null }],
+            connections: [{ word: "stroll", relation: "類義語", pos: "動", relatedEntryId: null, wordnetVerified: false }],
         });
     });
 
@@ -104,19 +109,21 @@ describe("db", () => {
 
         db.saveConnections(walk.id, {
             meaning: "歩くという意味",
+            pos: "動",
             hasConnections: true,
             connections: [
-                { word: "Run", relation: "対義語" }, // AI表記の大文字小文字ゆれもマッチすること
-                { word: "stroll", relation: "類義語" }, // 未登録の語はマッチしない
+                { word: "Run", relation: "対義語", pos: "動", wordnetVerified: false }, // AI表記の大文字小文字ゆれもマッチすること
+                { word: "stroll", relation: "類義語", pos: "動", wordnetVerified: false }, // 未登録の語はマッチしない
             ],
         });
 
         expect(db.getConnections(walk.id)).toEqual({
             meaning: "歩くという意味",
+            pos: "動",
             hasConnections: true,
             connections: [
-                { word: "Run", relation: "対義語", relatedEntryId: run.id },
-                { word: "stroll", relation: "類義語", relatedEntryId: null },
+                { word: "Run", relation: "対義語", pos: "動", relatedEntryId: run.id, wordnetVerified: false },
+                { word: "stroll", relation: "類義語", pos: "動", relatedEntryId: null, wordnetVerified: false },
             ],
         });
     });
@@ -127,8 +134,9 @@ describe("db", () => {
 
         db.saveConnections(walk.id, {
             meaning: "歩くという意味",
+            pos: "動",
             hasConnections: true,
-            connections: [{ word: "walk", relation: "自分自身" }],
+            connections: [{ word: "walk", relation: "自分自身", pos: "動", wordnetVerified: false }],
         });
 
         expect(db.getConnections(walk.id)!.connections[0]!.relatedEntryId).toBeNull();
@@ -143,8 +151,9 @@ describe("db", () => {
 
         db.saveConnections(other.id, {
             meaning: "小テストという意味",
+            pos: "名",
             hasConnections: true,
-            connections: [{ word: "test", relation: "類義語" }],
+            connections: [{ word: "test", relation: "類義語", pos: "名", wordnetVerified: false }],
         });
 
         expect(db.getConnections(other.id)!.connections[0]!.relatedEntryId).toBe(newer.id);

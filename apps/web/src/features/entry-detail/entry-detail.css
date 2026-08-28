@@ -37,6 +37,28 @@ body {
     margin: 0;
 }
 
+.entry-detail__pos {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    min-width: 1.6rem;
+    height: 1.6rem;
+    padding: 0 0.3rem;
+    border: 1px solid #444;
+    border-radius: 0.25rem;
+    color: #999;
+    font-size: 0.85rem;
+    line-height: 1;
+}
+
+.entry-detail__pos--small {
+    min-width: 1.3rem;
+    height: 1.3rem;
+    padding: 0 0.25rem;
+    font-size: 0.65rem;
+}
+
 .entry-detail__message {
     color: #666;
     font-size: 0.9rem;
@@ -107,4 +129,14 @@ a.entry-detail__connection-word:hover {
 .entry-detail__connection-relation {
     color: #666;
     font-size: 0.8rem;
+}
+
+.entry-detail__connection-source {
+    margin-left: auto;
+    color: #6ba36f;
+    font-size: 0.65rem;
+    letter-spacing: 0.03em;
+    border: 1px solid rgba(107, 163, 111, 0.4);
+    border-radius: 999px;
+    padding: 0.1rem 0.5rem;
 }

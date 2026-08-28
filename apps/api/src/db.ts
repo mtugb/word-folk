@@ -4,7 +4,6 @@ import { migrate } from "drizzle-orm/bun-sqlite/migrator";
 import { and, asc, eq, isNull } from "drizzle-orm";
 import type { Entry } from "core";
 import { entries, entryConnections } from "./schema";
-import type { ConnectionsResult } from "./connections";
 
 export interface StoredEntry extends Entry {
     id: string;
@@ -14,13 +13,25 @@ export interface StoredEntry extends Entry {
 export interface PersistedConnection {
     word: string;
     relation: string;
+    pos: string;
     relatedEntryId: string | null;
+    wordnetVerified: boolean;
 }
 
 export interface PersistedConnectionsResult {
     meaning: string;
+    pos: string;
     hasConnections: boolean;
     connections: PersistedConnection[];
+}
+
+// generateConnections（AI）の出力に、WordNet候補と照合した wordnetVerified を
+// 付与したもの。connectionsService が saveConnections に渡す形。
+export interface GeneratedConnectionsResult {
+    meaning: string;
+    pos: string;
+    hasConnections: boolean;
+    connections: { word: string; relation: string; pos: string; wordnetVerified: boolean }[];
 }
 
 // import.meta.dir-relative, so migrations resolve correctly regardless of
@@ -85,11 +96,14 @@ export function createDb(sqlitePath: string) {
         const rows = db.select().from(entryConnections).where(eq(entryConnections.entryId, entryId)).all();
         return {
             meaning: entry.connectionsMeaning ?? "",
+            pos: entry.pos ?? "",
             hasConnections: rows.length > 0,
             connections: rows.map((row) => ({
                 word: row.word,
                 relation: row.relation,
+                pos: row.pos,
                 relatedEntryId: row.relatedEntryId,
+                wordnetVerified: row.wordnetVerified,
             })),
         };
     }
@@ -101,10 +115,10 @@ export function createDb(sqlitePath: string) {
      * (background job vs. on-demand fallback racing each other) doesn't
      * overwrite/double-insert; returns null when that guard loses the race.
      */
-    function saveConnections(entryId: string, result: ConnectionsResult): PersistedConnectionsResult | null {
+    function saveConnections(entryId: string, result: GeneratedConnectionsResult): PersistedConnectionsResult | null {
         const updated = db
             .update(entries)
-            .set({ connectionsMeaning: result.meaning, connectionsGeneratedAt: new Date().toISOString() })
+            .set({ connectionsMeaning: result.meaning, pos: result.pos, connectionsGeneratedAt: new Date().toISOString() })
             .where(and(eq(entries.id, entryId), isNull(entries.connectionsGeneratedAt)))
             .returning({ id: entries.id })
             .all();
@@ -113,7 +127,9 @@ export function createDb(sqlitePath: string) {
         const connections: PersistedConnection[] = result.connections.map((connection) => ({
             word: connection.word,
             relation: connection.relation,
+            pos: connection.pos,
             relatedEntryId: findEntryIdByHeadword(connection.word, entryId),
+            wordnetVerified: connection.wordnetVerified,
         }));
 
         if (connections.length > 0) {
@@ -123,14 +139,16 @@ export function createDb(sqlitePath: string) {
                         entryId,
                         word: connection.word,
                         relation: connection.relation,
+                        pos: connection.pos,
                         relatedEntryId: connection.relatedEntryId,
+                        wordnetVerified: connection.wordnetVerified,
                         createdAt: new Date().toISOString(),
                     }))
                 )
                 .run();
         }
 
-        return { meaning: result.meaning, hasConnections: connections.length > 0, connections };
+        return { meaning: result.meaning, pos: result.pos, hasConnections: connections.length > 0, connections };
     }
 
     return { insertEntry, listEntries, getEntry, getConnections, saveConnections };

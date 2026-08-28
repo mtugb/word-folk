@@ -3,12 +3,14 @@ import { cors } from "@elysiajs/cors";
 import { tokenize, tokensToEntry, type Entry } from "core";
 import { createConnectionsService } from "./connectionsService";
 import { createDb } from "./db";
+import { createWordnet } from "./wordnet";
 
 const API_TOKEN = process.env.API_TOKEN;
 
 const db = createDb(process.env.DATABASE_PATH ?? "wordfolk.sqlite");
 const { insertEntry, listEntries, getEntry } = db;
-const { ensureConnections } = createConnectionsService(db);
+const wordnet = createWordnet(process.env.WORDNET_DB_PATH ?? "wordnet/oewn.sqlite");
+const { ensureConnections } = createConnectionsService(db, wordnet);
 
 const StoredEntrySchema = t.Object({
     id: t.String(),
@@ -74,12 +76,15 @@ const app = new Elysia()
             response: {
                 200: t.Object({
                     meaning: t.String(),
+                    pos: t.String(),
                     hasConnections: t.Boolean(),
                     connections: t.Array(
                         t.Object({
                             word: t.String(),
                             relation: t.String(),
+                            pos: t.String(),
                             relatedEntryId: t.Nullable(t.String()),
+                            wordnetVerified: t.Boolean(),
                         })
                     ),
                 }),

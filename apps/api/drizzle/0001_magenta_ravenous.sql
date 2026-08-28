@@ -1,0 +1,1 @@
+ALTER TABLE `entry_connections` ADD `wordnet_verified` integer DEFAULT false NOT NULL;

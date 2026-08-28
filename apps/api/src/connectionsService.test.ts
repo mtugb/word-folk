@@ -1,17 +1,22 @@
 import { describe, expect, mock, test } from "bun:test";
 import type { ConnectionsResult } from "./connections";
 import type { PersistedConnectionsResult } from "./db";
+import type { Wordnet, WordnetSense } from "./wordnet";
+
+const NULL_WORDNET: Wordnet = { lookup: () => [] };
 
 const MOCK_RESULT: ConnectionsResult = {
     meaning: "歩くという意味",
+    pos: "動",
     hasConnections: true,
-    connections: [{ word: "stroll", relation: "類義語" }],
+    connections: [{ word: "stroll", relation: "類義語", pos: "動" }],
 };
 
 const MOCK_PERSISTED_RESULT: PersistedConnectionsResult = {
     meaning: "歩くという意味",
+    pos: "動",
     hasConnections: true,
-    connections: [{ word: "stroll", relation: "類義語", relatedEntryId: null }],
+    connections: [{ word: "stroll", relation: "類義語", pos: "動", relatedEntryId: null, wordnetVerified: false }],
 };
 
 describe("connectionsService", () => {
@@ -23,7 +28,7 @@ describe("connectionsService", () => {
 
         const db = createDb(":memory:");
         const entry = db.insertEntry({ headword: ["walk"], hint: "歩く" });
-        const { ensureConnections } = createConnectionsService(db);
+        const { ensureConnections } = createConnectionsService(db, NULL_WORDNET);
 
         const result = await ensureConnections(entry);
 
@@ -40,7 +45,7 @@ describe("connectionsService", () => {
 
         const db = createDb(":memory:");
         const entry = db.insertEntry({ headword: ["walk"], hint: "歩く" });
-        const { ensureConnections } = createConnectionsService(db);
+        const { ensureConnections } = createConnectionsService(db, NULL_WORDNET);
 
         await ensureConnections(entry);
         const second = await ensureConnections(entry);
@@ -61,7 +66,7 @@ describe("connectionsService", () => {
 
         const db = createDb(":memory:");
         const entry = db.insertEntry({ headword: ["walk"], hint: "歩く" });
-        const { ensureConnections } = createConnectionsService(db);
+        const { ensureConnections } = createConnectionsService(db, NULL_WORDNET);
 
         const call1 = ensureConnections(entry);
         const call2 = ensureConnections(entry);
@@ -83,7 +88,7 @@ describe("connectionsService", () => {
 
         const db = createDb(":memory:");
         const entry = db.insertEntry({ headword: ["walk"], hint: "歩く" });
-        const { ensureConnections } = createConnectionsService(db);
+        const { ensureConnections } = createConnectionsService(db, NULL_WORDNET);
 
         await expect(ensureConnections(entry)).rejects.toThrow("gemini unavailable");
         expect(db.getConnections(entry.id)).toBeNull();
@@ -98,8 +103,9 @@ describe("connectionsService", () => {
     test("links a connection to an existing entry when the generated word matches its headword", async () => {
         const generateConnections = mock(async () => ({
             meaning: "経営するという意味",
+            pos: "動",
             hasConnections: true,
-            connections: [{ word: "walk", relation: "対義語" }],
+            connections: [{ word: "walk", relation: "対義語", pos: "動" }],
         }));
         mock.module("./connections", () => ({ generateConnections }));
         const { createConnectionsService } = await import("./connectionsService");
@@ -108,10 +114,60 @@ describe("connectionsService", () => {
         const db = createDb(":memory:");
         const walk = db.insertEntry({ headword: ["walk"], hint: "歩く" });
         const run = db.insertEntry({ headword: ["run"], hint: "経営" });
-        const { ensureConnections } = createConnectionsService(db);
+        const { ensureConnections } = createConnectionsService(db, NULL_WORDNET);
 
         const result = await ensureConnections(run);
 
         expect(result.connections[0]!.relatedEntryId).toBe(walk.id);
+    });
+
+    test("passes WordNet senses for the headword into generateConnections", async () => {
+        const senses: WordnetSense[] = [
+            { pos: "v", definition: "walk fast", synonyms: ["stroll"], antonyms: [] },
+        ];
+        const wordnet: Wordnet = { lookup: mock(() => senses) };
+        const generateConnections = mock(async () => MOCK_RESULT);
+        mock.module("./connections", () => ({ generateConnections }));
+        const { createConnectionsService } = await import("./connectionsService");
+        const { createDb } = await import("./db");
+
+        const db = createDb(":memory:");
+        const entry = db.insertEntry({ headword: ["walk"], hint: "歩く" });
+        const { ensureConnections } = createConnectionsService(db, wordnet);
+
+        await ensureConnections(entry);
+
+        expect(wordnet.lookup).toHaveBeenCalledWith("walk");
+        expect(generateConnections).toHaveBeenCalledWith("walk", "歩く", senses);
+    });
+
+    test("marks a connection as wordnetVerified when the AI-picked word is among the WordNet candidates", async () => {
+        const senses: WordnetSense[] = [
+            { pos: "v", definition: "walk fast", synonyms: ["Stroll"], antonyms: [] },
+        ];
+        const wordnet: Wordnet = { lookup: () => senses };
+        const generateConnections = mock(async () => ({
+            meaning: "歩くという意味",
+            pos: "動",
+            hasConnections: true,
+            connections: [
+                { word: "stroll", relation: "類義語", pos: "動" }, // WordNet候補に含まれる（大文字小文字は無視）
+                { word: "wander off", relation: "コロケーション", pos: "句動" }, // 候補に無い
+            ],
+        }));
+        mock.module("./connections", () => ({ generateConnections }));
+        const { createConnectionsService } = await import("./connectionsService");
+        const { createDb } = await import("./db");
+
+        const db = createDb(":memory:");
+        const entry = db.insertEntry({ headword: ["walk"], hint: "歩く" });
+        const { ensureConnections } = createConnectionsService(db, wordnet);
+
+        const result = await ensureConnections(entry);
+
+        expect(result.connections).toEqual([
+            { word: "stroll", relation: "類義語", pos: "動", relatedEntryId: null, wordnetVerified: true },
+            { word: "wander off", relation: "コロケーション", pos: "句動", relatedEntryId: null, wordnetVerified: false },
+        ]);
     });
 });

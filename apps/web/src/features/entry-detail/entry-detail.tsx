@@ -12,8 +12,15 @@ interface StoredEntry extends Entry {
 
 interface ConnectionsResult {
     meaning: string;
+    pos: string;
     hasConnections: boolean;
-    connections: { word: string; relation: string; relatedEntryId: string | null }[];
+    connections: {
+        word: string;
+        relation: string;
+        pos: string;
+        relatedEntryId: string | null;
+        wordnetVerified: boolean;
+    }[];
 }
 
 function idFromPath(): string {
@@ -21,7 +28,7 @@ function idFromPath(): string {
     return match ? decodeURIComponent(match[1]!) : "";
 }
 
-function Connections({ id }: { id: string }) {
+function useConnections(id: string) {
     const [result, setResult] = useState<ConnectionsResult | null>(null);
     const [error, setError] = useState<string | null>(null);
 
@@ -35,6 +42,14 @@ function Connections({ id }: { id: string }) {
         });
     }, [id]);
 
+    return { result, error };
+}
+
+function PosBadge({ pos, small }: { pos: string; small?: boolean }) {
+    return <span className={`entry-detail__pos${small ? " entry-detail__pos--small" : ""}`}>{pos}</span>;
+}
+
+function Connections({ result, error }: { result: ConnectionsResult | null; error: string | null }) {
     return (
         <section className="entry-detail__connections">
             <h2 className="entry-detail__connections-title">関連語</h2>
@@ -53,6 +68,7 @@ function Connections({ id }: { id: string }) {
                         <ul className="entry-detail__connections-list">
                             {result.connections.map((connection, i) => (
                                 <li key={i} className="entry-detail__connection">
+                                    <PosBadge pos={connection.pos} small />
                                     {connection.relatedEntryId ? (
                                         <a
                                             className="entry-detail__connection-word"
@@ -64,6 +80,14 @@ function Connections({ id }: { id: string }) {
                                         <span className="entry-detail__connection-word">{connection.word}</span>
                                     )}
                                     <span className="entry-detail__connection-relation">{connection.relation}</span>
+                                    {connection.wordnetVerified && (
+                                        <span
+                                            className="entry-detail__connection-source"
+                                            title="Open English WordNetに掲載されている類義語・対義語です"
+                                        >
+                                            WordNet
+                                        </span>
+                                    )}
                                 </li>
                             ))}
                         </ul>
@@ -78,6 +102,7 @@ function EntryDetail() {
     const [id] = useState(idFromPath);
     const [entry, setEntry] = useState<StoredEntry | null | undefined>(undefined);
     const [error, setError] = useState<string | null>(null);
+    const { result, error: connectionsError } = useConnections(id);
 
     useEffect(() => {
         api.entries({ id }).get().then(({ data, error }) => {
@@ -112,11 +137,12 @@ function EntryDetail() {
             <header className="entry-detail__header">
                 <FaceIcon headword={headword} size={64} />
                 <h1 className="entry-detail__headword">{headword}</h1>
+                {result?.pos && <PosBadge pos={result.pos} />}
             </header>
             <div className="entry-detail__hint">
                 {entry.hint || <span className="entry-detail__hint--empty">(ヒントなし)</span>}
             </div>
-            <Connections id={id} />
+            <Connections result={result} error={connectionsError} />
         </div>
     );
 }

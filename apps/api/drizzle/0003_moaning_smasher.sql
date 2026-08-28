@@ -1,0 +1,1 @@
+ALTER TABLE `entry_connections` ADD `pos` text DEFAULT '他' NOT NULL;
