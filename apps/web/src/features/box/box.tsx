@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { Send } from "react-feather";
 import { tokenize, tokensToEntry, type Entry } from "core";
 import { FaceIcon } from "../../components/FaceIcon";
+import { BottomNav } from "../../components/BottomNav";
 import { api } from "../../lib/api";
 import "./box.css";
 
@@ -74,4 +75,9 @@ function Box() {
 }
 
 const root = createRoot(document.getElementById("root")!);
-root.render(<Box />);
+root.render(
+    <>
+        <Box />
+        <BottomNav />
+    </>
+);

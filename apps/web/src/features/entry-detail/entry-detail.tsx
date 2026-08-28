@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import type { Entry } from "core";
 import { FaceIcon } from "../../components/FaceIcon";
+import { BottomNav } from "../../components/BottomNav";
 import { api } from "../../lib/api";
 import "./entry-detail.css";
 
@@ -148,4 +149,9 @@ function EntryDetail() {
 }
 
 const root = createRoot(document.getElementById("root")!);
-root.render(<EntryDetail />);
+root.render(
+    <>
+        <EntryDetail />
+        <BottomNav />
+    </>
+);

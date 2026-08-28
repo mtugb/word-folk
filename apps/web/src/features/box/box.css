@@ -8,6 +8,7 @@ body {
     display: flex;
     justify-content: center;
     padding-top: 20vh;
+    padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
     background: #0b0d10;
     color: #e6e6e6;
     font-family: system-ui, sans-serif;

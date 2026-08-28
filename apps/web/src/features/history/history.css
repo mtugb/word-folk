@@ -10,7 +10,7 @@ body {
     font-family: system-ui, sans-serif;
     display: flex;
     justify-content: center;
-    padding: 3rem 1rem;
+    padding: 3rem 1rem calc(4.5rem + env(safe-area-inset-bottom, 0px));
 }
 
 .history {
